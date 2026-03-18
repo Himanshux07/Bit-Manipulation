@@ -16,9 +16,11 @@ If you can solve everything here comfortably, you are in strong shape for MAANG-
 9. [Subsets and Bitmasking](#subsets-and-bitmasking)
 10. [Bitmask DP](#bitmask-dp)
 11. [Greedy + Trie + Bits](#greedy--trie--bits)
-12. [Common Interview Pitfalls](#common-interview-pitfalls)
-13. [Java Utility Templates](#java-utility-templates)
-14. [14 Solved Practice Questions](#14-solved-practice-questions)
+12. [All Bit Tricks Cheat Sheet](#all-bit-tricks-cheat-sheet)
+13. [Question Approach Playbook](#question-approach-playbook)
+14. [Common Interview Pitfalls](#common-interview-pitfalls)
+15. [Java Utility Templates](#java-utility-templates)
+16. [14 Solved Practice Questions](#14-solved-practice-questions)
 
 ## Why Bit Manipulation Matters
 
@@ -191,6 +193,249 @@ Maximum XOR pair:
 - Build binary trie from numbers.
 - For each number, greedily try opposite bit at each level from MSB to LSB.
 - Complexity: `O(32 * n)`.
+
+## All Bit Tricks Cheat Sheet
+
+Use this as a quick revision list before interviews.
+
+### 1) Set, unset, toggle, check
+
+```java
+// 0-based bit index i
+boolean isSet = (n & (1 << i)) != 0;
+n = n | (1 << i);      // set
+n = n & ~(1 << i);     // unset
+n = n ^ (1 << i);      // toggle
+```
+
+### 2) Rightmost set/unset bit tricks
+
+```java
+n & -n          // isolate rightmost set bit
+n & (n - 1)     // remove rightmost set bit
+~n & (n + 1)    // isolate rightmost unset bit
+n | (n + 1)     // set rightmost unset bit
+```
+
+### 3) Power checks
+
+```java
+// power of 2
+n > 0 && (n & (n - 1)) == 0
+
+// power of 4
+n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0
+```
+
+### 4) Count bits fast
+
+```java
+Integer.bitCount(n);   // built-in
+
+int c = 0;
+while (n != 0) {
+    n &= (n - 1);
+    c++;
+}
+```
+
+### 5) Range and mask tricks
+
+```java
+// Keep common prefix of left and right for range AND
+while (left < right) {
+    left >>= 1;
+    right >>= 1;
+    shift++;
+}
+ans = left << shift;
+
+// Keep lowest k bits
+int lowK = n & ((1 << k) - 1);
+
+// Clear lowest k bits
+int cleared = n & ~((1 << k) - 1);
+```
+
+### 6) XOR identities used everywhere
+
+```java
+a ^ a = 0
+a ^ 0 = a
+a ^ b ^ a = b
+```
+
+### 7) Swap without temp (rarely needed in production)
+
+```java
+a ^= b;
+b ^= a;
+a ^= b;
+```
+
+### 8) Sign check
+
+```java
+// true if opposite signs
+boolean opposite = (a ^ b) < 0;
+```
+
+### 9) Iterate all submasks of a mask
+
+```java
+for (int sub = mask; sub > 0; sub = (sub - 1) & mask) {
+    // process submask
+}
+```
+
+### 10) Bit positions and extraction
+
+```java
+int lsbIndex = Integer.numberOfTrailingZeros(n);
+int msbIndex = 31 - Integer.numberOfLeadingZeros(n);
+```
+
+### 11) Safe shifting reminders
+
+- Prefer `1L << i` when `i` may be large.
+- Use `>>>` when you need logical right shift on signed ints.
+- Be careful with `1 << 31` in `int` (it becomes negative).
+
+## Question Approach Playbook
+
+This section gives how to think during interviews, not just formulas.
+
+### 1) Power of 2
+
+Pattern: only one set bit should exist.
+
+```java
+return n > 0 && (n & (n - 1)) == 0;
+```
+
+Why it works: subtracting 1 flips all bits from rightmost set bit onward, so AND becomes 0 only for one-bit numbers.
+
+### 2) Power of 4
+
+Pattern: power of 2 + set bit must be at even index.
+
+```java
+return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0;
+```
+
+### 3) Single Number (others twice)
+
+Pattern: XOR cancellation.
+
+```java
+int ans = 0;
+for (int x : nums) ans ^= x;
+return ans;
+```
+
+### 4) Missing Number in [0..n]
+
+Pattern: XOR all indices and values.
+
+```java
+int x = 0;
+for (int i = 0; i <= n; i++) x ^= i;
+for (int v : nums) x ^= v;
+return x;
+```
+
+### 5) Two unique numbers (others twice)
+
+Pattern:
+
+- XOR all to get `a ^ b`.
+- Pick one differing bit using `xor & -xor`.
+- Partition numbers by that bit and XOR separately.
+
+### 6) Single Number II (others thrice)
+
+Pattern: bit-state machine (`ones`, `twos`) or per-bit modulo 3 counting.
+
+```java
+ones = (ones ^ x) & ~twos;
+twos = (twos ^ x) & ~ones;
+```
+
+### 7) Counting Bits (0..n)
+
+Pattern: DP relation from half value.
+
+```java
+dp[i] = dp[i >> 1] + (i & 1);
+```
+
+### 8) Reverse Bits
+
+Pattern: read LSB, build answer from left.
+
+```java
+for (int i = 0; i < 32; i++) {
+    ans = (ans << 1) | (n & 1);
+    n >>>= 1;
+}
+```
+
+### 9) Bitwise AND of range [left, right]
+
+Pattern: remove changing suffix bits, keep common prefix.
+
+```java
+int shift = 0;
+while (left < right) {
+    left >>= 1;
+    right >>= 1;
+    shift++;
+}
+return left << shift;
+```
+
+### 10) Maximum XOR of two numbers
+
+Pattern: binary trie, greedy opposite bit from MSB to LSB.
+
+Interview pitch:
+
+- Insert all numbers in trie with 32 levels.
+- For each number, walk opposite bit if present to maximize XOR.
+- Overall `O(32n)` time.
+
+### 11) Subsets / combinations by mask
+
+Pattern: `mask` from `0` to `2^n - 1`, choose index `i` where bit is set.
+
+### 12) Bitmask DP (hard level)
+
+Pattern checklist:
+
+- Define `mask` as visited/chosen state.
+- Define second dimension only if needed (`last`, `city`, `idx`).
+- Transition by trying unset bits.
+- Cache via `dp[mask][state]`.
+
+Examples: TSP, assignment, shortest path visiting all nodes, seating/arrangement constraints.
+
+### 13) Maximum product of word lengths
+
+Pattern: compress each word to 26-bit mask.
+
+```java
+if ((mask[i] & mask[j]) == 0) {
+    ans = Math.max(ans, len[i] * len[j]);
+}
+```
+
+### 14) Sum of two integers without plus
+
+Pattern:
+
+- `a ^ b` gives sum without carry.
+- `(a & b) << 1` gives carry.
+- Repeat until carry is zero.
 
 ## Common Interview Pitfalls
 
